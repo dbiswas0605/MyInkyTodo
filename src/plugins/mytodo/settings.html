@@ -1,38 +1,35 @@
-{% extends "plugin_settings_base.html" %}
-{% block plugin_settings %}
 <div class="form-group">
-    <label for="client_id">Google Client ID</label>
-    <input type="text" class="form-control" id="client_id" name="client_id" value="{{ settings.client_id or '' }}" required>
-    <small class="form-text text-muted">Your Google OAuth 2.0 Client ID</small>
+    <div class="form-group nowrap">
+        <label for="title" class="form-label">Title:</label>
+        <input type="text" id="title" name="title" placeholder="Type something..." required class="form-input">
+    </div>
+
+    <!-- Text Model Dropdown -->
+    <div class="form-group nowrap">
+        <label for="textModel" class="form-label">Text Model:</label>
+        <select id="textModel" name="textModel" class="form-input">
+            <option value="gpt-4o-mini">GPT-4o mini</option>
+            <option value="gpt-4o">GPT-4o</option>
+        </select>
+    </div>
 </div>
+
 <div class="form-group">
-    <label for="client_secret">Google Client Secret</label>
-    <input type="password" class="form-control" id="client_secret" name="client_secret" value="{{ settings.client_secret or '' }}" required>
-    <small class="form-text text-muted">Your Google OAuth 2.0 Client Secret</small>
+    <label for="textPrompt" class="form-label">Text Prompt:</label>
+    <input type="text" id="textPrompt" name="textPrompt" placeholder="Type something..." required class="form-input">
 </div>
-<div class="form-group">
-    <label for="max_tasks">Maximum Tasks to Display</label>
-    <input type="number" class="form-control" id="max_tasks" name="max_tasks" value="{{ settings.max_tasks or '5' }}" min="1" max="10">
-</div>
-<div class="form-group">
-    <label for="list_id">Task List ID (optional)</label>
-    <input type="text" class="form-control" id="list_id" name="list_id" value="{{ settings.list_id or '' }}">
-    <small class="form-text text-muted">Leave empty to use default task list</small>
-</div>
-{% if style_settings %}
-    {% include "style_settings.html" %}
-{% endif %}
 
 <script>
-document.addEventListener('DOMContentLoaded', () => {
-    if (typeof loadPluginSettings !== 'undefined' && loadPluginSettings) {
-        // Prepopulate form fields with existing settings
-        document.getElementById('client_id').value = pluginSettings.client_id || '';
-        document.getElementById('client_secret').value = pluginSettings.client_secret || '';
-        document.getElementById('max_tasks').value = pluginSettings.max_tasks || '5';
-        document.getElementById('list_id').value = pluginSettings.list_id || '';
-    }
-});
-</script>
-{% endblock %}
 
+    // populate form values from plugin settings
+    document.addEventListener('DOMContentLoaded', () => {        
+        if (loadPluginSettings) {
+            // Populate text inputs
+            document.getElementById('title').value = pluginSettings.title || '';
+            document.getElementById('textPrompt').value = pluginSettings.textPrompt || '';
+            
+            // Populate text model
+            document.getElementById('textModel').value = pluginSettings.textModel;
+        }
+    });
+</script>

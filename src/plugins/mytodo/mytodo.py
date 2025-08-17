@@ -1,85 +1,53 @@
-from PIL import Image, ImageDraw, ImageFont
 from plugins.base_plugin.base_plugin import BasePlugin
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
-from googleapiclient.discovery import build
+from utils.app_utils import resolve_path
+from openai import OpenAI
+from PIL import Image, ImageDraw, ImageFont
+from utils.image_utils import resize_image
+from io import BytesIO
+from datetime import datetime
+import requests
+import logging
+import textwrap
 import os
 
-class MyTodoPlugin(BasePlugin):
-    def __init__(self):
-        super().__init__()
-        self.SCOPES = ['https://www.googleapis.com/auth/tasks.readonly']
+logger = logging.getLogger(__name__)
 
+class MyTodoPlugin(BasePlugin):
     def generate_settings_template(self):
         template_params = super().generate_settings_template()
+        template_params['api_key'] = {
+            "required": True,
+            "service": "OpenAI",
+            "expected_key": "TODOIST_API_TOKEN"
+        }
         template_params['style_settings'] = True
         return template_params
 
-    def _get_google_service(self, settings):
-        creds = None
-        # TODO: Implement proper OAuth2 flow and token storage
-        if not settings.get('client_id') or not settings.get('client_secret'):
-            raise RuntimeError('Google API credentials not configured')
+    def generate_image(self, settings, device_config):
 
-        client_config = {
-            "installed": {
-                "client_id": settings['client_id'],
-                "client_secret": settings['client_secret'],
-                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                "token_uri": "https://oauth2.googleapis.com/token",
-                "redirect_uris": ["urn:ietf:wg:oauth:2.0:oob"]
-            }
+        prompt_response = MyTodoPlugin.fetch_text_prompt()
+
+        title = settings.get("title")
+
+        dimensions = device_config.get_resolution()
+        if device_config.get_config("orientation") == "vertical":
+            dimensions = dimensions[::-1]
+
+        image_template_params = {
+            "title": title,
+            "content": prompt_response,
+            "plugin_settings": settings
         }
 
-        flow = InstalledAppFlow.from_client_config(client_config, self.SCOPES)
-        creds = flow.run_local_server(port=0)
-
-        return build('tasks', 'v1', credentials=creds)
-
-    def _fetch_tasks(self, service, settings):
-        max_tasks = int(settings.get('max_tasks', 5))
-        list_id = settings.get('list_id', '@default')
-
-        try:
-            results = service.tasks().list(tasklist=list_id, maxResults=max_tasks).execute()
-            return results.get('items', [])
-        except Exception as e:
-            raise RuntimeError(f'Failed to fetch tasks: {str(e)}')
-
-    def generate_image(self, settings, device_config):
-        # Create a new image with white background
-        width = device_config.width
-        height = device_config.height
-        image = Image.new('RGB', (width, height), 'white')
-        draw = ImageDraw.Draw(image)
-
-        # Load font
-        try:
-            font_title = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 24)
-            font_tasks = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 16)
-        except OSError:
-            # Fallback to default font
-            font_title = ImageFont.load_default()
-            font_tasks = ImageFont.load_default()
-
-        # Draw title
-        draw.text((10, 10), 'My Todo List', font=font_title, fill='black')
-
-        try:
-            service = self._get_google_service(settings)
-            tasks = self._fetch_tasks(service, settings)
-
-            y_position = 50
-            for task in tasks:
-                task_title = task.get('title', 'Untitled Task')
-                status = '☐' if task.get('status') == 'needsAction' else '☑'
-                draw.text((10, y_position), f'{status} {task_title}', font=font_tasks, fill='black')
-                y_position += 30
-
-            if not tasks:
-                draw.text((10, y_position), 'No tasks found', font=font_tasks, fill='black')
-
-        except Exception as e:
-            draw.text((10, height//2), f'Error: {str(e)}', font=font_tasks, fill='black')
+        image = self.render_image(dimensions, "mytodo.html", "mytodo.css", image_template_params)
 
         return image
+
+    @staticmethod
+    def fetch_text_prompt():
+        logger.info(f"Getting random text prompt from input")
+
+        prompt = "Hello Tasks! Here is a random task for you to complete today: "
+        logger.info(f"Generated random text prompt: {prompt}")
+
+        return prompt
